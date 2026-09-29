@@ -14,10 +14,12 @@ export function TimelineBoard({ viewModel, scenes }: TimelineBoardProps) {
       <div className="panel-heading timeline-heading"><div><span className="eyebrow">SEQUENCE / 时间结构</span><h2>故事时间线</h2></div><div className="timeline-actions"><span className="hint">拖动感受节奏 · 点击编辑详情</span><button className="secondary-button" onClick={submit}>＋ 新建场景</button></div></div>
       {viewModel.timelineWarning && <div className="warning-banner">△ {viewModel.timelineWarning}</div>}
       <div className="timeline-rail">
-        {scenes.map((scene, index) => {
+        {scenes.map((scene) => {
           const selected = story?.selectedSceneId === scene.id;
           const characterCount = story?.characters.filter((character) => scene.characterIds.includes(character.id)).length ?? 0;
-          return <button className={selected ? 'scene-node selected' : 'scene-node'} key={scene.id} onClick={() => viewModel.selectScene(scene.id)}><span className="scene-index">{String(index + 1).padStart(2, '0')}</span><span className="scene-line" /><span className="scene-dot" /><div className="scene-copy"><span className="scene-meta">SCENE {String(index + 1).padStart(2, '0')} · {characterCount} 位人物</span><strong>{scene.title}</strong><span>{scene.summary}</span><div className="scene-tags">{scene.conflict && <em>冲突</em>}{scene.clueIds.length > 0 && <em className="clue-tag">伏笔 {scene.clueIds.length}</em>}</div></div></button>;
+          const sceneNumber = viewModel.getSceneNumber(scene.id) ?? 0;
+          const sceneLabel = String(sceneNumber).padStart(2, '0');
+          return <button className={selected ? 'scene-node selected' : 'scene-node'} key={scene.id} onClick={() => viewModel.selectScene(scene.id)}><span className="scene-index">{sceneLabel}</span><span className="scene-line" /><span className="scene-dot" /><div className="scene-copy"><span className="scene-meta">SCENE {sceneLabel} · {characterCount} 位人物</span><strong>{scene.title}</strong><span>{scene.summary}</span><div className="scene-tags">{scene.conflict && <em>冲突</em>}{scene.clueIds.length > 0 && <em className="clue-tag">伏笔 {scene.clueIds.length}</em>}</div></div></button>;
         })}
         {scenes.length === 0 && <div className="empty-state">时间线还没有场景。创建第一幕，让故事开始移动。</div>}
       </div>

@@ -124,12 +124,21 @@ export class StoryViewModel {
   }
 
   moveScene(sceneId: string, direction: 'up' | 'down'): void {
-    const scenes = orderedScenes(this.requireStory());
+    const scenes = this.visibleScenes;
     const index = scenes.findIndex((scene) => scene.id === sceneId);
     const nextIndex = direction === 'up' ? index - 1 : index + 1;
     if (index < 0 || nextIndex < 0 || nextIndex >= scenes.length) return;
-    [scenes[index], scenes[nextIndex]] = [scenes[nextIndex], scenes[index]];
-    this.updateStory((story) => ({ ...story, scenes: scenes.map((scene, sceneIndex) => ({ ...scene, order: sceneIndex + 1 })) }));
+
+    const movingScene = scenes[index];
+    const targetScene = scenes[nextIndex];
+    this.updateStory((story) => ({
+      ...story,
+      scenes: story.scenes.map((scene) => {
+        if (scene.id === movingScene.id) return { ...scene, order: targetScene.order };
+        if (scene.id === targetScene.id) return { ...scene, order: movingScene.order };
+        return scene;
+      }),
+    }));
     this.setState({ notice: '时间线顺序已更新' });
   }
 
@@ -172,7 +181,17 @@ export class StoryViewModel {
   get visibleScenes(): StoryScene[] {
     const story = this.requireStory();
     const keyword = this.state.search.trim().toLowerCase();
-    return orderedScenes(story).filter((scene) => `${scene.title}${scene.summary}${scene.conflict}`.toLowerCase().includes(keyword));
+    return orderedScenes(story).filter((scene) => this.sceneMatchesSearch(scene, keyword));
+  }
+
+  getSceneNumber(sceneId: string): number | null {
+    const index = orderedScenes(this.requireStory()).findIndex((scene) => scene.id === sceneId);
+    return index < 0 ? null : index + 1;
+  }
+
+  getVisibleSceneIndex(sceneId: string): number | null {
+    const index = this.visibleScenes.findIndex((scene) => scene.id === sceneId);
+    return index < 0 ? null : index;
   }
 
   get selectedScene(): StoryScene | null {
@@ -188,6 +207,10 @@ export class StoryViewModel {
   private requireStory(): StoryDocument {
     if (!this.state.story) throw new Error('故事尚未初始化');
     return this.state.story;
+  }
+
+  private sceneMatchesSearch(scene: StoryScene, keyword: string): boolean {
+    return `${scene.title}${scene.summary}${scene.conflict}`.toLowerCase().includes(keyword);
   }
 
   private updateStory(updater: (story: StoryDocument) => StoryDocument, showEditing = true): void {

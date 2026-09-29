@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createStarterStory } from '../models/story';
+import { orderedScenes } from '../models/storyRules';
 import { LocalStoryRepository } from '../repositories/storyRepository';
 import { MemoryStorageService } from '../services/storageService';
 import { StoryViewModel } from '../viewmodels/storyViewModel';
@@ -21,6 +22,51 @@ describe('story view model', () => {
     restored.initialize();
     expect(restored.snapshot.story?.scenes.some((item) => item.title === '地下档案室')).toBe(true);
     expect(restored.snapshot.story?.characters.some((item) => item.name === '阿洛')).toBe(true);
+  });
+
+  it('keeps scene numbers tied to the full order while moving within the filtered list', () => {
+    const repository = new LocalStoryRepository(new MemoryStorageService());
+    const viewModel = new StoryViewModel(repository);
+    viewModel.initialize();
+    viewModel.addScene('第三个路口', '迷雾散开');
+    viewModel.addScene('第四个路口', '潮汐退去');
+    const firstScene = orderedScenes(viewModel.snapshot.story!)[0];
+    const secondScene = orderedScenes(viewModel.snapshot.story!)[1];
+    const thirdScene = orderedScenes(viewModel.snapshot.story!)[2];
+    const fourthScene = orderedScenes(viewModel.snapshot.story!)[3];
+
+    viewModel.setSearch('路口');
+    expect(viewModel.visibleScenes.map((scene) => scene.id)).toEqual([thirdScene.id, fourthScene.id]);
+    expect(viewModel.getSceneNumber(thirdScene.id)).toBe(3);
+    expect(viewModel.getSceneNumber(fourthScene.id)).toBe(4);
+
+    viewModel.setSearch('');
+    expect(orderedScenes(viewModel.snapshot.story!).map((scene) => scene.id)).toEqual([
+      firstScene.id,
+      secondScene.id,
+      thirdScene.id,
+      fourthScene.id,
+    ]);
+    viewModel.setSearch('路口');
+
+    viewModel.moveScene(thirdScene.id, 'down');
+    expect(viewModel.getSceneNumber(thirdScene.id)).toBe(4);
+    expect(viewModel.getSceneNumber(fourthScene.id)).toBe(3);
+    expect(orderedScenes(viewModel.snapshot.story!).map((scene) => scene.id)).toEqual([
+      firstScene.id,
+      secondScene.id,
+      fourthScene.id,
+      thirdScene.id,
+    ]);
+
+    viewModel.setSearch('');
+    expect(orderedScenes(viewModel.snapshot.story!).map((scene) => scene.order)).toEqual([1, 2, 3, 4]);
+    expect(orderedScenes(viewModel.snapshot.story!).map((scene) => scene.id)).toEqual([
+      firstScene.id,
+      secondScene.id,
+      fourthScene.id,
+      thirdScene.id,
+    ]);
   });
 
   it('shows recoverable validation feedback and resets corrupt storage', () => {
