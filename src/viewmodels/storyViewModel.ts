@@ -124,11 +124,20 @@ export class StoryViewModel {
   }
 
   moveScene(sceneId: string, direction: 'up' | 'down'): void {
+    // 移动以作者当前看到的列表为准：有搜索时只与相邻的可见场景交换，落点在可见列表中始终可预期；
+    // 无筛选时可见列表就是完整顺序，与完整顺序移动的行为一致。
+    const visible = this.visibleScenes;
+    const visibleIndex = visible.findIndex((scene) => scene.id === sceneId);
+    if (visibleIndex < 0) return;
+    const neighborIndex = direction === 'up' ? visibleIndex - 1 : visibleIndex + 1;
+    if (neighborIndex < 0 || neighborIndex >= visible.length) return;
+    const neighborId = visible[neighborIndex].id;
+
     const scenes = orderedScenes(this.requireStory());
-    const index = scenes.findIndex((scene) => scene.id === sceneId);
-    const nextIndex = direction === 'up' ? index - 1 : index + 1;
-    if (index < 0 || nextIndex < 0 || nextIndex >= scenes.length) return;
-    [scenes[index], scenes[nextIndex]] = [scenes[nextIndex], scenes[index]];
+    const movingIndex = scenes.findIndex((scene) => scene.id === sceneId);
+    const targetIndex = scenes.findIndex((scene) => scene.id === neighborId);
+    if (movingIndex < 0 || targetIndex < 0) return;
+    [scenes[movingIndex], scenes[targetIndex]] = [scenes[targetIndex], scenes[movingIndex]];
     this.updateStory((story) => ({ ...story, scenes: scenes.map((scene, sceneIndex) => ({ ...scene, order: sceneIndex + 1 })) }));
     this.setState({ notice: '时间线顺序已更新' });
   }
@@ -173,6 +182,12 @@ export class StoryViewModel {
     const story = this.requireStory();
     const keyword = this.state.search.trim().toLowerCase();
     return orderedScenes(story).filter((scene) => `${scene.title}${scene.summary}${scene.conflict}`.toLowerCase().includes(keyword));
+  }
+
+  // 场景在完整故事中的真实位置（1 起）。搜索只是筛选视图，编号始终以完整顺序为准，
+  // 因此时间线与详情里显示的编号一致；清空搜索后自然回到连续编号。
+  getSceneNumber(sceneId: string): number {
+    return orderedScenes(this.requireStory()).findIndex((scene) => scene.id === sceneId) + 1;
   }
 
   get selectedScene(): StoryScene | null {
